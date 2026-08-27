@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-Asistente Inteligente — Conversación natural + internet
+Asistente Inteligente — Consola con streaming
 """
 
 from rich.console import Console
 from rich.panel import Panel
+from rich.live import Live
+from rich.text import Text
 
 from core.brain import Brain
 from core.memory import Memory
@@ -16,21 +18,21 @@ console = Console()
 def main():
     console.print(Panel.fit(
         "[bold cyan]Asistente Inteligente[/bold cyan]\n"
-        "[dim]Conversación natural · Internet · Voz[/dim]",
+        "[dim]Conversación · Internet · Memoria · Voz[/dim]",
         border_style="cyan"
     ))
 
     brain = Brain(model="llama3.2")
-    memory = Memory(max_messages=24)
+    memory = Memory(max_messages=30)
     voice = Voice()
 
     if not brain.is_available():
-        console.print("[red]Ollama no está disponible.[/red]")
+        console.print("[red]Ollama no disponible.[/red]")
         console.print("1. Instala: https://ollama.com")
         console.print("2. Ejecuta: ollama pull llama3.2")
         return
 
-    console.print("[green]Listo.[/green] Habla con normalidad. Escribe 'salir' para terminar.\n")
+    console.print("[green]Listo.[/green] Habla con naturalidad. Escribe 'salir' para terminar.\n")
 
     while True:
         try:
@@ -39,12 +41,18 @@ def main():
                 continue
 
             memory.add("user", user_input)
-            console.print("[dim]Pensando...[/dim]")
-            response = brain.think(user_input, memory.get_context())
-            memory.add("assistant", response)
 
-            console.print(f"[bold green]Asistente > [/bold green]{response}\n")
-            voice.speak(response)
+            full = []
+            console.print("[bold green]Asistente > [/bold green]", end="")
+
+            for chunk in brain.think_stream(user_input, memory.get_context(), memory=memory):
+                full.append(chunk)
+                console.print(chunk, end="")
+
+            console.print("\n")
+            respuesta = "".join(full).strip()
+            memory.add("assistant", respuesta)
+            voice.speak(respuesta)
 
             if brain.should_exit:
                 break
