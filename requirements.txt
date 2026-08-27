@@ -1,0 +1,12 @@
+ollama>=0.3.0
+sounddevice>=0.5.0
+numpy>=1.24.0
+requests>=2.31.0
+# STT offline
+vosk>=0.3.45
+# TTS local (Piper es el principal, edge-tts como fallback opcional)
+edge-tts>=6.1.0
+pyttsx3>=2.90
+# Utilidades
+rich>=13.0.0
+python-dotenv>=1.0.0
