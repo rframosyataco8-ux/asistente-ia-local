@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-Asistente por Comandos — Consola
-100% desde cero. Sin modelos. Sin APIs.
+Asistente Inteligente — Conversación natural + internet
 """
 
 from rich.console import Console
@@ -16,32 +15,36 @@ console = Console()
 
 def main():
     console.print(Panel.fit(
-        "[bold cyan]Asistente por Comandos[/bold cyan]\n"
-        "[dim]100% desde cero · Solo comandos[/dim]",
+        "[bold cyan]Asistente Inteligente[/bold cyan]\n"
+        "[dim]Conversación natural · Internet · Voz[/dim]",
         border_style="cyan"
     ))
 
-    brain = Brain()
-    memory = Memory()
+    brain = Brain(model="llama3.2")
+    memory = Memory(max_messages=24)
     voice = Voice()
 
-    console.print("[green]Listo.[/green] Escribe [bold]ayuda[/bold] para ver los comandos.\n")
+    if not brain.is_available():
+        console.print("[red]Ollama no está disponible.[/red]")
+        console.print("1. Instala: https://ollama.com")
+        console.print("2. Ejecuta: ollama pull llama3.2")
+        return
+
+    console.print("[green]Listo.[/green] Habla con normalidad. Escribe 'salir' para terminar.\n")
 
     while True:
         try:
-            user_input = console.input("[bold blue]> [/bold blue]").strip()
-
+            user_input = console.input("[bold blue]Tú > [/bold blue]").strip()
             if not user_input:
                 continue
 
             memory.add("user", user_input)
+            console.print("[dim]Pensando...[/dim]")
             response = brain.think(user_input, memory.get_context())
             memory.add("assistant", response)
 
-            console.print(f"[green]{response}[/green]\n")
-
-            # Hablar solo la primera línea
-            voice.speak(response.split("\n")[0])
+            console.print(f"[bold green]Asistente > [/bold green]{response}\n")
+            voice.speak(response)
 
             if brain.should_exit:
                 break
