@@ -1,6 +1,6 @@
 """
 Cerebro avanzado del asistente
-Conversación natural + herramientas + internet + memoria
+Conversación natural + herramientas + internet + memoria larga + streaming
 """
 
 import ollama
@@ -11,7 +11,7 @@ import platform
 import subprocess
 import socket
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Generator
 from urllib.parse import quote
 
 
@@ -29,6 +29,7 @@ Tus capacidades:
 - Conversar con naturalidad sobre cualquier tema
 - Razonar paso a paso cuando sea necesario
 - Usar información de internet cuando la tengas
+- Recordar datos importantes que el usuario te pida guardar
 - Ayudar con código, ideas, explicaciones, planificación, etc.
 - Ser sincero: si no sabes algo, lo dices
 - Ser conciso o detallado según el contexto
@@ -40,7 +41,8 @@ Estilo:
 - Puedes usar humor ligero cuando encaje
 
 Si te dan resultados de internet, intégralos de forma natural en tu respuesta.
-Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde de forma útil."""
+Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde de forma útil.
+Si el usuario te dice "recuerda que..." o "guarda que...", confirma que lo recordaste."""
 
     def is_available(self) -> bool:
         try:
@@ -110,7 +112,6 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
 
     def tool_calc(self, expression: str) -> str:
         try:
-            # Solo operaciones matemáticas seguras
             allowed = set("0123456789+-*/().% ")
             if not all(c in allowed for c in expression):
                 return "Expresión no permitida"
@@ -119,7 +120,7 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
         except Exception:
             return "No se pudo calcular"
 
-    # ─── Búsqueda web mejorada ──────────────────────────────
+    # ─── Búsqueda web ───────────────────────────────────────
 
     def web_search(self, query: str, max_results: int = 5) -> str:
         try:
@@ -169,13 +170,11 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
         ]
         if any(k in t for k in keys):
             return True
-        # Preguntas abiertas largas
         if "?" in t and len(t.split()) >= 4:
             return True
         return False
 
-    def _detect_local_tools(self, text: str) -> Optional[str]:
-        """Ejecuta herramientas locales si el mensaje es claramente una acción."""
+    def _detect_local_tools(self, text: str, memory=None) -> Optional[str]:
         t = text.lower().strip()
 
         if any(w in t for w in ["qué hora", "que hora", "hora es", "hora actual"]):
@@ -190,22 +189,68 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
         if "info del sistema" in t or "información del sistema" in t or "datos del pc" in t:
             return self.tool_system_info()
 
-        # Abrir algo
         m = re.search(r"(?:abre|abrir|abreme|ábreme)\s+(.+)", t)
         if m:
             return self.tool_open(m.group(1))
 
-        # Cálculo simple
         m = re.search(r"(?:calcula|cuánto es|cuanto es)\s+(.+)", t)
         if m:
             expr = m.group(1).replace("x", "*").replace("÷", "/")
             return f"Resultado: {self.tool_calc(expr)}"
 
+        # Recordar algo: "recuerda que mi color favorito es azul"
+        if memory and ("recuerda que" in t or "guarda que" in t or "anota que" in t):
+            m = re.search(r"(?:recuerda|guarda|anota)\s+que\s+(.+)", t)
+            if m:
+                dato = m.group(1).strip()
+                # Guardar con clave simple
+                key = dato[:40]
+                memory.remember(key, dato)
+                return f"Listo, lo recordaré: {dato}"
+
+        # Qué recuerdas
+        if memory and ("qué recuerdas" in t or "que recuerdas" in t or "qué sabes de mí" in t):
+            mems = memory.list_memories()
+            if not mems:
+                return "Todavía no tengo nada guardado sobre ti."
+            lines = ["Esto es lo que recuerdo:"]
+            for k, v in mems.items():
+                lines.append(f"• {v}")
+            return "\n".join(lines)
+
         return None
 
-    # ─── Pensar ─────────────────────────────────────────────
+    def _build_messages(self, user_message: str, context: List[Dict] = None, memory=None) -> List[Dict]:
+        messages = [{"role": "system", "content": self.system_prompt}]
 
-    def think(self, user_message: str, context: List[Dict] = None) -> str:
+        # Memoria a largo plazo
+        if memory:
+            lt = memory.get_long_term_context()
+            if lt:
+                messages.append({"role": "system", "content": lt})
+
+        if context:
+            messages.extend(context[-16:])
+
+        # Búsqueda web
+        if self._should_search(user_message):
+            extra = self.web_search(user_message)
+            messages.append({
+                "role": "system",
+                "content": (
+                    "Información actual de internet. Úsala si es relevante:\n\n" + extra
+                )
+            })
+
+        messages.append({
+            "role": "system",
+            "content": f"Fecha y hora actual: {self.tool_date()} — {self.tool_time()}"
+        })
+
+        messages.append({"role": "user", "content": user_message})
+        return messages
+
+    def think(self, user_message: str, context: List[Dict] = None, memory=None) -> str:
         if not user_message or not user_message.strip():
             return "¿Sí? Dime en qué te ayudo."
 
@@ -214,37 +259,11 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
             self.should_exit = True
             return "Hasta luego, Fabricio. Cuando me necesites aquí estaré."
 
-        # Primero intentar herramientas locales rápidas
-        local = self._detect_local_tools(user_message)
+        local = self._detect_local_tools(user_message, memory)
         if local:
             return local
 
-        # Búsqueda web si hace falta
-        extra = ""
-        if self._should_search(user_message):
-            extra = self.web_search(user_message)
-
-        messages = [{"role": "system", "content": self.system_prompt}]
-
-        if context:
-            messages.extend(context[-16:])  # más contexto
-
-        if extra:
-            messages.append({
-                "role": "system",
-                "content": (
-                    "Información actual obtenida de internet. "
-                    "Úsala si es relevante para responder de forma precisa:\n\n" + extra
-                )
-            })
-
-        # Contexto de fecha/hora siempre disponible
-        messages.append({
-            "role": "system",
-            "content": f"Fecha y hora actual: {self.tool_date()} — {self.tool_time()}"
-        })
-
-        messages.append({"role": "user", "content": user_message})
+        messages = self._build_messages(user_message, context, memory)
 
         try:
             response = ollama.chat(
@@ -253,7 +272,7 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
                 options={
                     "temperature": 0.7,
                     "top_p": 0.9,
-                    "num_predict": 800,
+                    "num_predict": 900,
                 }
             )
             return response["message"]["content"].strip()
@@ -262,6 +281,46 @@ Si el usuario pide acciones del sistema (abrir programas, hora, etc.), responde 
                 f"Error al generar respuesta: {e}\n\n"
                 "Verifica que Ollama esté corriendo y que tengas el modelo:\n"
                 f"  ollama pull {self.model}"
+            )
+
+    def think_stream(self, user_message: str, context: List[Dict] = None, memory=None) -> Generator[str, None, None]:
+        """Genera la respuesta poco a poco (streaming)."""
+        if not user_message or not user_message.strip():
+            yield "¿Sí? Dime en qué te ayudo."
+            return
+
+        low = user_message.strip().lower()
+        if low in ("salir", "adiós", "adios", "exit", "cerrar", "chao"):
+            self.should_exit = True
+            yield "Hasta luego, Fabricio. Cuando me necesites aquí estaré."
+            return
+
+        local = self._detect_local_tools(user_message, memory)
+        if local:
+            yield local
+            return
+
+        messages = self._build_messages(user_message, context, memory)
+
+        try:
+            stream = ollama.chat(
+                model=self.model,
+                messages=messages,
+                stream=True,
+                options={
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "num_predict": 900,
+                }
+            )
+            for chunk in stream:
+                part = chunk.get("message", {}).get("content", "")
+                if part:
+                    yield part
+        except Exception as e:
+            yield (
+                f"Error al generar respuesta: {e}\n\n"
+                f"Verifica: ollama pull {self.model}"
             )
 
     def set_model(self, model: str):
