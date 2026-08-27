@@ -1,61 +1,62 @@
-# Asistente Inteligente — Conversación natural
+# Asistente Inteligente
 
-Habla con él como con una persona. Entiende, responde con naturalidad y puede buscar en internet.
-
-- Conversación libre
-- Memoria de la charla
-- Acceso a internet (búsqueda)
-- Voz
-- Interfaz gráfica
-
-Corre **en tu PC** con Ollama (gratis, sin APIs de pago).
+Conversación natural, herramientas, internet y voz.
+Corre 100% en tu PC con Ollama.
 
 ---
 
-## Instalación
+## Instalación rápida
 
-### 1. Instalar Ollama
+### 1. Ollama
 
-Ve a https://ollama.com y descárgalo.
-
-Luego en una terminal:
+1. Descarga: https://ollama.com  
+2. Instala y ejecuta:
 
 ```bash
 ollama pull llama3.2
 ```
 
-(Otros modelos buenos: `qwen2.5:3b`, `phi3`, `gemma2:2b`)
+**Modelos recomendados (de mejor a más ligero):**
 
-### 2. Clonar e instalar
+| Modelo            | Calidad      | RAM aprox |
+|-------------------|--------------|-----------|
+| `qwen2.5:14b`     | Muy alta     | 12+ GB    |
+| `llama3.1:8b`     | Alta         | 8+ GB     |
+| `qwen2.5:7b`      | Alta         | 8 GB      |
+| `llama3.2`        | Buena        | 4–6 GB    |
+| `phi3`            | Aceptable    | 4 GB      |
+
+Para cambiar el modelo en el código, edita en `gui.py` o `main.py`:
+
+```python
+self.brain = Brain(model="qwen2.5:7b")
+```
+
+### 2. Proyecto
 
 ```bash
 git clone https://github.com/rframosyataco8-ux/asistente-ia-local.git
 cd asistente-ia-local
 
 python -m venv venv
-venv\Scripts\activate          # Windows
+venv\Scripts\activate
 
 pip install -r requirements.txt
-```
 
-### 3. Ejecutar
-
-```bash
-python gui.py      # Interfaz gráfica (recomendado)
-# o
-python main.py     # Consola
+python gui.py
 ```
 
 ---
 
-## Qué puede hacer
+## Capacidades actuales
 
-- Conversar de forma natural
-- Responder preguntas
-- Buscar información en internet cuando hace falta
-- Recordar el contexto de la conversación
-- Hablar con voz del sistema
-- Despedirse con "salir" o "adiós"
+- Conversación natural y fluida
+- Memoria de contexto de la conversación
+- Búsqueda en internet automática cuando hace falta
+- Herramientas locales: hora, fecha, IP, abrir programas, cálculos
+- Voz natural (edge-tts)
+- Interfaz gráfica limpia
+- Sin APIs de pago
 
 ---
 
@@ -63,14 +64,23 @@ python main.py     # Consola
 
 ```
 core/
-  brain.py    → inteligencia + internet
-  memory.py   → memoria de conversación
-  voice.py    → voz
-gui.py        → interfaz gráfica
-main.py       → versión consola
+  brain.py   → inteligencia + internet + herramientas
+  memory.py  → memoria de conversación
+  voice.py   → voz natural
+gui.py       → interfaz gráfica
+main.py      → versión consola
 ```
 
 ---
 
+## Próximas mejoras posibles
+
+- Streaming de respuestas (texto que aparece poco a poco)
+- Escucha por micrófono (hablar en vez de escribir)
+- Memoria a largo plazo (recordar cosas entre sesiones)
+- Más herramientas (archivos, navegador, etc.)
+
+---
+
 **Autor**: Fabricio Ramos  
-**Agosto 2026**
+**2026**
