@@ -1,62 +1,76 @@
-# Asistente por Comandos — 100% Desde Cero
+# Asistente Inteligente — Conversación natural
 
-**Sin modelos de IA. Sin APIs. Solo comandos.**
+Habla con él como con una persona. Entiende, responde con naturalidad y puede buscar en internet.
 
-Escribes un comando → el asistente lo ejecuta.
+- Conversación libre
+- Memoria de la charla
+- Acceso a internet (búsqueda)
+- Voz
+- Interfaz gráfica
+
+Corre **en tu PC** con Ollama (gratis, sin APIs de pago).
 
 ---
 
-## Ejecutar
+## Instalación
+
+### 1. Instalar Ollama
+
+Ve a https://ollama.com y descárgalo.
+
+Luego en una terminal:
+
+```bash
+ollama pull llama3.2
+```
+
+(Otros modelos buenos: `qwen2.5:3b`, `phi3`, `gemma2:2b`)
+
+### 2. Clonar e instalar
 
 ```bash
 git clone https://github.com/rframosyataco8-ux/asistente-ia-local.git
 cd asistente-ia-local
 
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate          # Windows
 
 pip install -r requirements.txt
+```
 
-python gui.py      # Interfaz gráfica
+### 3. Ejecutar
+
+```bash
+python gui.py      # Interfaz gráfica (recomendado)
 # o
 python main.py     # Consola
 ```
 
 ---
 
-## Comandos disponibles
+## Qué puede hacer
 
-| Comando        | Qué hace                                      |
-|----------------|-----------------------------------------------|
-| `ayuda`        | Lista todos los comandos                      |
-| `hora`         | Muestra la hora                               |
-| `fecha`        | Muestra la fecha                              |
-| `quien`        | Dice quién es el asistente                    |
-| `sistema`      | Info del sistema operativo                    |
-| `ip`           | Muestra la IP local                           |
-| `abrir <algo>` | Abre programas o carpetas                     |
-| `eco <texto>`  | Repite el texto                               |
-| `limpiar`      | Limpia la memoria                             |
-| `salir`        | Cierra el asistente                           |
-
-### Ejemplos de `abrir`
-
-```
-abrir calculadora
-abrir notas
-abrir documentos
-abrir descargas
-abrir explorador
-abrir chrome
-```
+- Conversar de forma natural
+- Responder preguntas
+- Buscar información en internet cuando hace falta
+- Recordar el contexto de la conversación
+- Hablar con voz del sistema
+- Despedirse con "salir" o "adiós"
 
 ---
 
-## Cómo agregar más comandos
+## Estructura
 
-Edita `core/brain.py` y agrega una nueva función + regístrala en `self.commands`.
+```
+core/
+  brain.py    → inteligencia + internet
+  memory.py   → memoria de conversación
+  voice.py    → voz
+gui.py        → interfaz gráfica
+main.py       → versión consola
+```
 
 ---
 
 **Autor**: Fabricio Ramos  
-**Creado**: Agosto 2026
+**Agosto 2026**
