@@ -1,182 +1,133 @@
 """
-Cerebro del asistente — Solo por comandos
-100% desde cero. Sin modelos. Sin APIs.
-
-El usuario escribe comandos claros y el asistente los ejecuta.
+Cerebro del asistente — Conversación natural + inteligencia + internet
+Usa Ollama (modelo local en tu PC). Sin APIs de pago.
 """
 
-import os
-import subprocess
-import platform
+import ollama
+import requests
+import re
 from datetime import datetime
-from typing import List, Dict, Tuple
+from typing import List, Dict, Optional
+from urllib.parse import quote
 
 
 class Brain:
-    def __init__(self):
-        self.name = "Asistente"
-        self.system = platform.system()  # Windows / Linux / Darwin
-
-        # Registro de comandos disponibles
-        # formato: "comando": (descripción, función)
-        self.commands = {
-            "ayuda": ("Muestra la lista de comandos", self.cmd_ayuda),
-            "hora": ("Muestra la hora actual", self.cmd_hora),
-            "fecha": ("Muestra la fecha actual", self.cmd_fecha),
-            "quien": ("Dice quién es el asistente", self.cmd_quien),
-            "limpiar": ("Limpia la memoria de conversación", self.cmd_limpiar),
-            "abrir": ("Abre un programa o carpeta. Uso: abrir calculadora | abrir notas | abrir documentos", self.cmd_abrir),
-            "ip": ("Muestra la IP local", self.cmd_ip),
-            "sistema": ("Muestra información del sistema", self.cmd_sistema),
-            "eco": ("Repite el texto. Uso: eco hola mundo", self.cmd_eco),
-            "salir": ("Cierra el asistente", self.cmd_salir),
-        }
-
+    def __init__(self, model: str = "llama3.2"):
+        self.model = model
         self.should_exit = False
 
-    def think(self, user_message: str, context: List[Dict] = None) -> str:
-        """
-        Interpreta el mensaje como un comando.
-        Formato esperado: comando [argumentos]
-        """
-        if not user_message or not user_message.strip():
-            return "Escribe un comando. Usa 'ayuda' para ver la lista."
-
-        parts = user_message.strip().split(maxsplit=1)
-        cmd = parts[0].lower()
-        args = parts[1] if len(parts) > 1 else ""
-
-        if cmd in self.commands:
-            _, func = self.commands[cmd]
-            return func(args)
-
-        return f"Comando desconocido: '{cmd}'. Escribe 'ayuda' para ver los comandos disponibles."
-
-    # ─── Comandos ───────────────────────────────────────────
-
-    def cmd_ayuda(self, args: str = "") -> str:
-        lineas = ["Comandos disponibles:\n"]
-        for nombre, (desc, _) in sorted(self.commands.items()):
-            lineas.append(f"  {nombre:<12} → {desc}")
-        return "\n".join(lineas)
-
-    def cmd_hora(self, args: str = "") -> str:
-        return datetime.now().strftime("Hora actual: %H:%M:%S")
-
-    def cmd_fecha(self, args: str = "") -> str:
-        now = datetime.now()
-        dias = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
-        meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
-                 "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"]
-        return f"Hoy es {dias[now.weekday()]} {now.day} de {meses[now.month-1]} de {now.year}"
-
-    def cmd_quien(self, args: str = "") -> str:
-        return (
-            "Soy un asistente local creado 100% desde cero. "
-            "No uso ninguna IA externa. Solo respondo a comandos."
+        self.system_prompt = (
+            "Eres un asistente inteligente, amable y natural. "
+            "Hablas siempre en español de forma clara y conversacional. "
+            "Eres el asistente personal de Fabricio Ramos. "
+            "Puedes responder cualquier pregunta, conversar libremente, "
+            "dar opiniones, explicar temas y ayudar en lo que necesite. "
+            "Si te dan información de internet, úsala para responder mejor. "
+            "Sé conciso cuando haga falta y más detallado cuando el tema lo pida. "
+            "Si no sabes algo con certeza, dilo."
         )
-
-    def cmd_limpiar(self, args: str = "") -> str:
-        return "Memoria limpiada. (El historial se reinicia en la interfaz)"
-
-    def cmd_abrir(self, args: str = "") -> str:
-        if not args:
-            return "Uso: abrir <programa o carpeta>\nEjemplos: abrir calculadora | abrir notas | abrir documentos"
-
-        target = args.strip().lower()
-
-        # Mapeo de nombres amigables → comandos reales
-        mapping_win = {
-            "calculadora": "calc",
-            "notas": "notepad",
-            "bloc": "notepad",
-            "paint": "mspaint",
-            "explorador": "explorer",
-            "documentos": os.path.expanduser("~\\Documents"),
-            "descargas": os.path.expanduser("~\\Downloads"),
-            "escritorio": os.path.expanduser("~\\Desktop"),
-            "cmd": "cmd",
-            "powershell": "powershell",
-            "navegador": "start https://www.google.com",
-            "chrome": "start chrome",
-            "edge": "start msedge",
-        }
-
-        mapping_linux = {
-            "calculadora": "gnome-calculator",
-            "notas": "gedit",
-            "explorador": "xdg-open ~",
-            "documentos": "xdg-open ~/Documents",
-            "descargas": "xdg-open ~/Downloads",
-            "escritorio": "xdg-open ~/Desktop",
-            "navegador": "xdg-open https://www.google.com",
-        }
-
-        mapping_mac = {
-            "calculadora": "open -a Calculator",
-            "notas": "open -a TextEdit",
-            "explorador": "open ~",
-            "documentos": "open ~/Documents",
-            "descargas": "open ~/Downloads",
-            "escritorio": "open ~/Desktop",
-            "navegador": "open https://www.google.com",
-        }
-
-        try:
-            if self.system == "Windows":
-                if target in mapping_win:
-                    cmd = mapping_win[target]
-                    if cmd.startswith("start "):
-                        os.system(cmd)
-                    else:
-                        subprocess.Popen(cmd, shell=True)
-                else:
-                    # Intentar abrir lo que el usuario escribió directamente
-                    os.startfile(args) if hasattr(os, "startfile") else os.system(f'start "" "{args}"')
-                return f"Abriendo: {args}"
-
-            elif self.system == "Linux":
-                cmd = mapping_linux.get(target, f"xdg-open {args}")
-                subprocess.Popen(cmd, shell=True)
-                return f"Abriendo: {args}"
-
-            elif self.system == "Darwin":
-                cmd = mapping_mac.get(target, f"open {args}")
-                subprocess.Popen(cmd, shell=True)
-                return f"Abriendo: {args}"
-
-            return "Sistema operativo no reconocido."
-        except Exception as e:
-            return f"No se pudo abrir '{args}': {e}"
-
-    def cmd_ip(self, args: str = "") -> str:
-        try:
-            import socket
-            hostname = socket.gethostname()
-            ip = socket.gethostbyname(hostname)
-            return f"IP local: {ip}"
-        except Exception as e:
-            return f"No se pudo obtener la IP: {e}"
-
-    def cmd_sistema(self, args: str = "") -> str:
-        return (
-            f"Sistema: {platform.system()} {platform.release()}\n"
-            f"Máquina: {platform.machine()}\n"
-            f"Procesador: {platform.processor() or 'N/A'}\n"
-            f"Python: {platform.python_version()}"
-        )
-
-    def cmd_eco(self, args: str = "") -> str:
-        if not args:
-            return "Uso: eco <texto>"
-        return args
-
-    def cmd_salir(self, args: str = "") -> str:
-        self.should_exit = True
-        return "Cerrando asistente..."
 
     def is_available(self) -> bool:
-        return True
+        try:
+            models = ollama.list()
+            names = [m.get("name", "") for m in models.get("models", [])]
+            return any(self.model in n for n in names)
+        except Exception:
+            return False
 
-    def list_commands(self) -> List[str]:
-        return list(self.commands.keys())
+    def _needs_search(self, text: str) -> bool:
+        """Decide si la pregunta necesita buscar en internet."""
+        t = text.lower()
+        triggers = [
+            "busca", "buscar", "qué es", "que es", "quién es", "quien es",
+            "noticias", "último", "ultima", "actualidad", "clima",
+            "precio", "cotización", "cómo se", "como se",
+            "wikipedia", "define", "definición", "información sobre",
+            "dime sobre", "explícame", "explica",
+            "hoy", "ahora", "actual", "reciente"
+        ]
+        # También buscar si parece una pregunta de conocimiento
+        if any(w in t for w in triggers):
+            return True
+        if t.endswith("?") and len(t.split()) > 3:
+            return True
+        return False
+
+    def _web_search(self, query: str, max_results: int = 4) -> str:
+        """Búsqueda web simple usando DuckDuckGo (sin API key)."""
+        try:
+            url = f"https://html.duckduckgo.com/html/?q={quote(query)}"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            r = requests.get(url, headers=headers, timeout=8)
+            r.raise_for_status()
+
+            # Extraer resultados de forma simple
+            results = []
+            # Buscar títulos y snippets aproximados
+            titles = re.findall(r'class="result__a"[^>]*>(.*?)</a>', r.text, re.DOTALL)
+            snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', r.text, re.DOTALL)
+            # Limpiar HTML básico
+            clean = lambda s: re.sub(r'<[^>]+>', '', s).strip()
+
+            for i, title in enumerate(titles[:max_results]):
+                t = clean(title)
+                s = clean(snippets[i]) if i < len(snippets) else ""
+                if t:
+                    results.append(f"- {t}: {s}" if s else f"- {t}")
+
+            if not results:
+                return "No se encontraron resultados claros en internet."
+
+            return "Información encontrada en internet:\n" + "\n".join(results)
+        except Exception as e:
+            return f"(No se pudo buscar en internet: {e})"
+
+    def think(self, user_message: str, context: List[Dict] = None) -> str:
+        if not user_message or not user_message.strip():
+            return "¿Sí? Dime."
+
+        # Detectar comando de salida
+        if user_message.strip().lower() in ("salir", "adiós", "adios", "exit", "cerrar"):
+            self.should_exit = True
+            return "Hasta luego. ¡Que te vaya bien!"
+
+        # Buscar en internet si hace falta
+        extra_info = ""
+        if self._needs_search(user_message):
+            extra_info = self._web_search(user_message)
+
+        messages = [{"role": "system", "content": self.system_prompt}]
+
+        if context:
+            # Limitar contexto para no saturar
+            messages.extend(context[-12:])
+
+        if extra_info:
+            messages.append({
+                "role": "system",
+                "content": f"Usa esta información reciente de internet para responder si es útil:\n{extra_info}"
+            })
+
+        messages.append({"role": "user", "content": user_message})
+
+        try:
+            response = ollama.chat(
+                model=self.model,
+                messages=messages,
+                options={
+                    "temperature": 0.75,
+                    "num_predict": 600,
+                }
+            )
+            return response["message"]["content"].strip()
+        except Exception as e:
+            return (
+                f"No pude pensar bien: {e}\n\n"
+                "Asegúrate de tener Ollama instalado y el modelo descargado:\n"
+                "  ollama pull llama3.2"
+            )
+
+    def set_model(self, model: str):
+        self.model = model
