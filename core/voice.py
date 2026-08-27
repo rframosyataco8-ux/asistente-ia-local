@@ -1,50 +1,97 @@
 """
-Voz del asistente — 100% local
-Usa pyttsx3 (motor de texto a voz del sistema operativo).
-No necesita internet ni APIs.
+Voz natural de alta calidad
+Prioridad: edge-tts (voces neurales) → fallback pyttsx3
 """
 
-import pyttsx3
+import asyncio
+import tempfile
+import os
+import platform
+import subprocess
 from typing import Optional
 
 
 class Voice:
-    def __init__(self, rate: int = 175, volume: float = 1.0):
+    def __init__(self, voice: str = "es-MX-DaliaNeural"):
+        self.voice_name = voice
         self.enabled = True
-        self.engine: Optional[pyttsx3.Engine] = None
-        try:
-            self.engine = pyttsx3.init()
-            self.engine.setProperty("rate", rate)
-            self.engine.setProperty("volume", volume)
+        self.engine = None
+        self.use_edge = False
 
-            # Intentar poner voz en español si existe
-            voices = self.engine.getProperty("voices")
-            for v in voices:
-                # Buscar voces que suenen a español
-                name = (v.name or "").lower()
-                lang = str(getattr(v, "languages", [])).lower()
-                if "spanish" in name or "español" in name or "es_" in lang or "es-" in name:
-                    self.engine.setProperty("voice", v.id)
-                    break
-        except Exception as e:
-            print(f"[Aviso] No se pudo iniciar el motor de voz: {e}")
-            self.enabled = False
+        # Intentar edge-tts primero (mucho más natural)
+        try:
+            import edge_tts  # noqa
+            self.use_edge = True
+        except ImportError:
+            self.use_edge = False
+            try:
+                import pyttsx3
+                self.engine = pyttsx3.init()
+                self.engine.setProperty("rate", 175)
+                self.engine.setProperty("volume", 1.0)
+                voices = self.engine.getProperty("voices")
+                for v in voices:
+                    name = (v.name or "").lower()
+                    if "spanish" in name or "español" in name or "es-" in name:
+                        self.engine.setProperty("voice", v.id)
+                        break
+            except Exception:
+                self.enabled = False
 
     def speak(self, text: str):
-        if not self.enabled or not text or not self.engine:
+        if not self.enabled or not text or not text.strip():
             return
+
+        # Limitar longitud para no hablar textos enormes
+        if len(text) > 600:
+            text = text[:600] + "..."
+
         try:
-            self.engine.say(text)
-            self.engine.runAndWait()
+            if self.use_edge:
+                asyncio.run(self._speak_edge(text))
+            elif self.engine:
+                self.engine.say(text)
+                self.engine.runAndWait()
         except Exception as e:
-            print(f"[Voz error]: {e}")
+            print(f"[Voz]: {e}")
+
+    async def _speak_edge(self, text: str):
+        import edge_tts
+        communicate = edge_tts.Communicate(text, self.voice_name)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as f:
+            path = f.name
+
+        await communicate.save(path)
+
+        system = platform.system()
+        try:
+            if system == "Windows":
+                # playsound-like con powershell / start
+                os.system(f'start /min "" "{path}"')
+                # Espera aproximada
+                await asyncio.sleep(min(len(text) * 0.055 + 0.8, 25))
+            elif system == "Darwin":
+                subprocess.run(["afplay", path], check=False)
+            else:
+                # Linux
+                for player in (["mpg123", "-q"], ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet"]):
+                    try:
+                        subprocess.run(player + [path], check=False)
+                        break
+                    except FileNotFoundError:
+                        continue
+        finally:
+            try:
+                os.unlink(path)
+            except Exception:
+                pass
+
+    def set_voice(self, voice: str):
+        self.voice_name = voice
 
     def disable(self):
         self.enabled = False
 
     def enable(self):
         self.enabled = True
-
-    def set_rate(self, rate: int):
-        if self.engine:
-            self.engine.setProperty("rate", rate)
