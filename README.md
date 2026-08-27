@@ -1,97 +1,60 @@
-# Asistente IA Local — 100% Desde Cero
+# Asistente por Comandos — 100% Desde Cero
 
-**Sin Ollama. Sin modelos pre-entrenados. Sin APIs. Solo código propio.**
+**Sin modelos de IA. Sin APIs. Solo comandos.**
 
-Este es un asistente construido completamente desde cero:
-
-- Cerebro propio basado en reglas, intenciones y base de conocimiento
-- Voz local (pyttsx3 — motor del sistema)
-- Memoria de conversación
-- Interfaz gráfica (Tkinter)
-- Todo corre en tu PC sin internet
+Escribes un comando → el asistente lo ejecuta.
 
 ---
 
-## Cómo ejecutarlo
+## Ejecutar
 
 ```bash
 git clone https://github.com/rframosyataco8-ux/asistente-ia-local.git
 cd asistente-ia-local
 
 python -m venv venv
-venv\Scripts\activate          # Windows
-# source venv/bin/activate     # Linux/Mac
+venv\Scripts\activate
 
 pip install -r requirements.txt
 
-# Opción 1: Interfaz gráfica (recomendado)
-python gui.py
-
-# Opción 2: Solo consola
-python main.py
+python gui.py      # Interfaz gráfica
+# o
+python main.py     # Consola
 ```
 
 ---
 
-## Estructura del proyecto
+## Comandos disponibles
+
+| Comando        | Qué hace                                      |
+|----------------|-----------------------------------------------|
+| `ayuda`        | Lista todos los comandos                      |
+| `hora`         | Muestra la hora                               |
+| `fecha`        | Muestra la fecha                              |
+| `quien`        | Dice quién es el asistente                    |
+| `sistema`      | Info del sistema operativo                    |
+| `ip`           | Muestra la IP local                           |
+| `abrir <algo>` | Abre programas o carpetas                     |
+| `eco <texto>`  | Repite el texto                               |
+| `limpiar`      | Limpia la memoria                             |
+| `salir`        | Cierra el asistente                           |
+
+### Ejemplos de `abrir`
 
 ```
-asistente-ia-local/
-├── gui.py              ← Interfaz gráfica
-├── main.py             ← Versión de consola
-├── requirements.txt
-├── core/
-│   ├── brain.py        ← Cerebro propio (reglas + intenciones)
-│   ├── memory.py       ← Memoria de conversación
-│   ├── voice.py        ← Voz local
-│   └── stt.py          ← Escucha (en desarrollo)
-└── README.md
-```
-
----
-
-## Qué puede hacer ahora
-
-- Saludar y despedirse
-- Decir la hora y la fecha
-- Responder quién es
-- Responder cómo está
-- Mostrar ayuda básica
-- Recordar el historial de la conversación actual
-- Hablar con voz del sistema
-
----
-
-## Cómo hacerlo más inteligente
-
-Todo está en `core/brain.py`.
-
-Puedes:
-1. Agregar más intenciones (palabras clave)
-2. Agregar más respuestas en la base de conocimiento
-3. Agregar lógica más compleja (cálculos, control de archivos, etc.)
-4. Guardar conocimiento en un archivo JSON para que aprenda de forma persistente
-
-Ejemplo de cómo agregar conocimiento:
-
-```python
-brain.add_intent("clima", ["clima", "tiempo", "hace calor", "llueve"])
-brain.add_knowledge("clima", ["No tengo acceso al clima todavía, pero puedo agregarlo."])
+abrir calculadora
+abrir notas
+abrir documentos
+abrir descargas
+abrir explorador
+abrir chrome
 ```
 
 ---
 
-## Estado actual
+## Cómo agregar más comandos
 
-| Módulo           | Estado   |
-|------------------|----------|
-| Cerebro propio   | Listo    |
-| Memoria          | Listo    |
-| Voz local        | Listo    |
-| Interfaz gráfica | Listo    |
-| Escucha (STT)    | Pendiente |
-| Control de PC    | Pendiente |
-| Aprendizaje      | Pendiente |
+Edita `core/brain.py` y agrega una nueva función + regístrala en `self.commands`.
 
 ---
 
