@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Interfaz gráfica avanzada del Asistente Inteligente
+Interfaz gráfica avanzada — streaming + memoria + modelos
 """
 
 import tkinter as tk
-from tkinter import scrolledtext, messagebox
+from tkinter import scrolledtext, messagebox, simpledialog
 import threading
 
 from core.brain import Brain
@@ -16,8 +16,8 @@ class AsistenteGUI:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Asistente Inteligente")
-        self.root.geometry("820x660")
-        self.root.minsize(580, 480)
+        self.root.geometry("860x680")
+        self.root.minsize(600, 500)
         self.root.configure(bg="#0b1220")
 
         self.brain = Brain(model="llama3.2")
@@ -34,7 +34,6 @@ class AsistenteGUI:
         accent = "#38bdf8"
         text = "#e2e8f0"
 
-        # Header
         header = tk.Frame(self.root, bg=bg)
         header.pack(fill=tk.X, padx=18, pady=(16, 4))
 
@@ -49,13 +48,12 @@ class AsistenteGUI:
         )
         self.status.pack(side=tk.RIGHT, pady=(8, 0))
 
-        # Toolbar
         tools = tk.Frame(self.root, bg=bg)
         tools.pack(fill=tk.X, padx=18, pady=(0, 4))
 
-        def btn(text, cmd):
+        def btn(label, cmd):
             b = tk.Button(
-                tools, text=text, command=cmd,
+                tools, text=label, command=cmd,
                 font=("Segoe UI", 9), bg=panel, fg=text,
                 activebackground="#1e293b", activeforeground=text,
                 relief=tk.FLAT, padx=10, pady=3, cursor="hand2"
@@ -64,7 +62,8 @@ class AsistenteGUI:
             return b
 
         btn("Limpiar chat", self._clear_chat)
-        btn("Modelos", self._show_models)
+        btn("Cambiar modelo", self._change_model)
+        btn("Ver memoria", self._show_memory)
 
         self.voz_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
@@ -73,7 +72,6 @@ class AsistenteGUI:
             selectcolor=panel, activebackground=bg, activeforeground=text
         ).pack(side=tk.RIGHT)
 
-        # Chat
         self.chat = scrolledtext.ScrolledText(
             self.root, wrap=tk.WORD, font=("Segoe UI", 11),
             bg=panel, fg=text, insertbackground=text,
@@ -86,7 +84,6 @@ class AsistenteGUI:
         self.chat.tag_configure("msg", foreground=text)
         self.chat.tag_configure("sys", foreground="#94a3b8", font=("Segoe UI", 9, "italic"))
 
-        # Input
         bar = tk.Frame(self.root, bg=bg)
         bar.pack(fill=tk.X, padx=18, pady=(0, 16))
 
@@ -108,18 +105,15 @@ class AsistenteGUI:
     def _check_brain(self):
         if self.brain.is_available():
             self.status.config(text=f"Listo · {self.brain.model}", fg="#4ade80")
-            self._add("sys", "Hola. Puedes hablarme con naturalidad. Pregúntame lo que quieras.")
+            self._add("sys", "Hola. Puedes hablarme con naturalidad.\n"
+                             "Ejemplos: «recuerda que me gusta el café», «qué recuerdas», «busca noticias de hoy»")
         else:
             self.status.config(text="Ollama no detectado", fg="#f87171")
             self._add("sys",
                 "No se detectó Ollama o el modelo.\n\n"
                 "1. Instala Ollama → https://ollama.com\n"
-                "2. Ejecuta en terminal:  ollama pull llama3.2\n"
-                "3. Vuelve a abrir esta aplicación.\n\n"
-                "Modelos recomendados:\n"
-                "  ollama pull llama3.2\n"
-                "  ollama pull qwen2.5:7b\n"
-                "  ollama pull llama3.1:8b"
+                "2. Ejecuta:  ollama pull llama3.2\n"
+                "3. Vuelve a abrir esta aplicación."
             )
 
     def _add(self, rol, texto):
@@ -135,21 +129,52 @@ class AsistenteGUI:
         self.chat.configure(state=tk.DISABLED)
         self.chat.see(tk.END)
 
+    def _start_bot_message(self):
+        self.chat.configure(state=tk.NORMAL)
+        self.chat.insert(tk.END, "Asistente\n", "bot")
+        self.chat.configure(state=tk.DISABLED)
+        self.chat.see(tk.END)
+
+    def _append_bot_chunk(self, chunk: str):
+        self.chat.configure(state=tk.NORMAL)
+        self.chat.insert(tk.END, chunk, "msg")
+        self.chat.configure(state=tk.DISABLED)
+        self.chat.see(tk.END)
+
+    def _end_bot_message(self):
+        self.chat.configure(state=tk.NORMAL)
+        self.chat.insert(tk.END, "\n\n", "msg")
+        self.chat.configure(state=tk.DISABLED)
+        self.chat.see(tk.END)
+
     def _clear_chat(self):
         self.memory.clear()
         self.chat.configure(state=tk.NORMAL)
         self.chat.delete("1.0", tk.END)
         self.chat.configure(state=tk.DISABLED)
-        self._add("sys", "Chat limpiado. ¿En qué te ayudo?")
+        self._add("sys", "Chat limpiado. La memoria a largo plazo se mantiene.")
 
-    def _show_models(self):
+    def _change_model(self):
         models = self.brain.available_models()
         if not models:
-            messagebox.showinfo("Modelos", "No se detectaron modelos.\nEjecuta: ollama list")
+            messagebox.showinfo("Modelos", "No hay modelos.\nEjecuta: ollama pull llama3.2")
             return
+        actual = self.brain.model
         msg = "Modelos instalados:\n\n" + "\n".join(f"• {m}" for m in models)
-        msg += f"\n\nActual: {self.brain.model}"
-        messagebox.showinfo("Modelos", msg)
+        msg += f"\n\nActual: {actual}\n\nEscribe el nombre exacto del modelo:"
+        nuevo = simpledialog.askstring("Cambiar modelo", msg, parent=self.root)
+        if nuevo and nuevo.strip():
+            self.brain.set_model(nuevo.strip())
+            self.status.config(text=f"Listo · {self.brain.model}", fg="#4ade80")
+            self._add("sys", f"Modelo cambiado a: {self.brain.model}")
+
+    def _show_memory(self):
+        mems = self.memory.list_memories()
+        if not mems:
+            messagebox.showinfo("Memoria", "No hay datos guardados todavía.\n\nPrueba: «recuerda que me gusta el café»")
+            return
+        texto = "Memoria a largo plazo:\n\n" + "\n".join(f"• {v}" for v in mems.values())
+        messagebox.showinfo("Memoria", texto)
 
     def _on_send(self, event=None):
         if self.busy:
@@ -165,16 +190,33 @@ class AsistenteGUI:
 
     def _procesar(self, texto):
         self.memory.add("user", texto)
-        respuesta = self.brain.think(texto, self.memory.get_context())
+
+        full = []
+        self.root.after(0, self._start_bot_message)
+
+        try:
+            for chunk in self.brain.think_stream(
+                texto,
+                self.memory.get_context(),
+                memory=self.memory
+            ):
+                full.append(chunk)
+                self.root.after(0, lambda c=chunk: self._append_bot_chunk(c))
+        except Exception as e:
+            err = f"Error: {e}"
+            full.append(err)
+            self.root.after(0, lambda: self._append_bot_chunk(err))
+
+        respuesta = "".join(full).strip()
         self.memory.add("assistant", respuesta)
 
-        self.root.after(0, lambda: self._add("bot", respuesta))
+        self.root.after(0, self._end_bot_message)
         self.root.after(0, lambda: self.status.config(
             text=f"Listo · {self.brain.model}", fg="#4ade80"
         ))
         self.root.after(0, lambda: setattr(self, "busy", False))
 
-        if self.voz_var.get():
+        if self.voz_var.get() and respuesta:
             self.voice.speak(respuesta)
 
         if self.brain.should_exit:
