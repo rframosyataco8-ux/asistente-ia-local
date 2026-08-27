@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Asistente IA Local — 100% desde cero
-Sin Ollama, sin modelos externos, sin APIs.
+Asistente por Comandos — Consola
+100% desde cero. Sin modelos. Sin APIs.
 """
 
-import sys
 from rich.console import Console
 from rich.panel import Panel
 
@@ -15,46 +14,37 @@ from core.voice import Voice
 console = Console()
 
 
-def banner():
+def main():
     console.print(Panel.fit(
-        "[bold cyan]Asistente IA Local[/bold cyan]\n"
-        "[dim]100% desde cero · Sin modelos externos · Sin APIs[/dim]",
+        "[bold cyan]Asistente por Comandos[/bold cyan]\n"
+        "[dim]100% desde cero · Solo comandos[/dim]",
         border_style="cyan"
     ))
 
-
-def main():
-    banner()
-    console.print("\n[yellow]Iniciando...[/yellow]\n")
-
-    memory = Memory()
     brain = Brain()
+    memory = Memory()
     voice = Voice()
 
-    console.print("[green]✓ Cerebro propio listo[/green]")
-    console.print("[green]✓ Memoria lista[/green]")
-    console.print("[green]✓ Voz local lista[/green]")
-    console.print("\n[bold]Escribe tu mensaje. Escribe 'salir' para terminar.[/bold]\n")
+    console.print("[green]Listo.[/green] Escribe [bold]ayuda[/bold] para ver los comandos.\n")
 
     while True:
         try:
-            user_input = console.input("[bold blue]Tú > [/bold blue]").strip()
+            user_input = console.input("[bold blue]> [/bold blue]").strip()
 
             if not user_input:
                 continue
-
-            if user_input.lower() in ("salir", "exit", "quit"):
-                msg = "Hasta luego."
-                console.print(f"[cyan]{msg}[/cyan]")
-                voice.speak(msg)
-                break
 
             memory.add("user", user_input)
             response = brain.think(user_input, memory.get_context())
             memory.add("assistant", response)
 
-            console.print(f"[bold green]Asistente > [/bold green]{response}\n")
-            voice.speak(response)
+            console.print(f"[green]{response}[/green]\n")
+
+            # Hablar solo la primera línea
+            voice.speak(response.split("\n")[0])
+
+            if brain.should_exit:
+                break
 
         except KeyboardInterrupt:
             console.print("\n[cyan]Adiós.[/cyan]")
