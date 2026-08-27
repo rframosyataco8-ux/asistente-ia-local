@@ -1,35 +1,30 @@
 # Asistente Inteligente
 
-Conversación natural, herramientas, internet y voz.
-Corre 100% en tu PC con Ollama.
+Conversación natural, internet, voz, streaming y memoria a largo plazo.
+Corre en tu PC con Ollama (sin APIs de pago).
 
 ---
 
-## Instalación rápida
+## Novedades
+
+- **Streaming**: el texto aparece poco a poco (como ChatGPT)
+- **Memoria a largo plazo**: puedes decirle «recuerda que...» y lo guarda entre sesiones
+- **Cambiar modelo** desde la interfaz
+- **Ver memoria** guardada
+- Voz natural + búsqueda web + herramientas locales
+
+---
+
+## Instalación
 
 ### 1. Ollama
 
-1. Descarga: https://ollama.com  
-2. Instala y ejecuta:
+https://ollama.com
 
 ```bash
 ollama pull llama3.2
-```
-
-**Modelos recomendados (de mejor a más ligero):**
-
-| Modelo            | Calidad      | RAM aprox |
-|-------------------|--------------|-----------|
-| `qwen2.5:14b`     | Muy alta     | 12+ GB    |
-| `llama3.1:8b`     | Alta         | 8+ GB     |
-| `qwen2.5:7b`      | Alta         | 8 GB      |
-| `llama3.2`        | Buena        | 4–6 GB    |
-| `phi3`            | Aceptable    | 4 GB      |
-
-Para cambiar el modelo en el código, edita en `gui.py` o `main.py`:
-
-```python
-self.brain = Brain(model="qwen2.5:7b")
+# Recomendado si tienes 8GB+ RAM:
+ollama pull qwen2.5:7b
 ```
 
 ### 2. Proyecto
@@ -42,45 +37,46 @@ python -m venv venv
 venv\Scripts\activate
 
 pip install -r requirements.txt
+python gui.py
+```
 
+Si ya lo tenías instalado:
+
+```bash
+cd asistente-ia-local
+git pull
+venv\Scripts\activate
+pip install -r requirements.txt
 python gui.py
 ```
 
 ---
 
-## Capacidades actuales
-
-- Conversación natural y fluida
-- Memoria de contexto de la conversación
-- Búsqueda en internet automática cuando hace falta
-- Herramientas locales: hora, fecha, IP, abrir programas, cálculos
-- Voz natural (edge-tts)
-- Interfaz gráfica limpia
-- Sin APIs de pago
-
----
-
-## Estructura
+## Ejemplos de uso
 
 ```
-core/
-  brain.py   → inteligencia + internet + herramientas
-  memory.py  → memoria de conversación
-  voice.py   → voz natural
-gui.py       → interfaz gráfica
-main.py      → versión consola
+Hola, ¿cómo estás?
+¿Qué hora es?
+Busca noticias sobre inteligencia artificial
+Recuerda que mi color favorito es el azul
+¿Qué recuerdas?
+Abre la calculadora
+Explícame qué es un transformer
 ```
 
 ---
 
-## Próximas mejoras posibles
+## Botones de la interfaz
 
-- Streaming de respuestas (texto que aparece poco a poco)
-- Escucha por micrófono (hablar en vez de escribir)
-- Memoria a largo plazo (recordar cosas entre sesiones)
-- Más herramientas (archivos, navegador, etc.)
+| Botón | Acción |
+|-------|--------|
+| Limpiar chat | Borra la conversación actual (no borra memoria larga) |
+| Cambiar modelo | Elige otro modelo de Ollama |
+| Ver memoria | Muestra lo que ha recordado |
+| Voz | Activa/desactiva la voz |
+
+La memoria larga se guarda en: `C:\Users\TU_USUARIO\.asistente-ia\`
 
 ---
 
-**Autor**: Fabricio Ramos  
-**2026**
+**Autor**: Fabricio Ramos · 2026
