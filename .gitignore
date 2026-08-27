@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+*.egg-info/
+dist/
+build/
+
+# Modelos grandes (no subir a git)
+models/
+*.pt
+*.bin
+*.gguf
+
+# Audio temporal
+*.mp3
+*.wav
+*.ogg
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
