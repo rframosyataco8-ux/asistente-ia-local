@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Interfaz gráfica del Asistente IA Local
-Hecha con Tkinter (viene con Python, no necesita instalar nada extra)
+Interfaz gráfica — Solo por comandos
 """
 
 import tkinter as tk
-from tkinter import scrolledtext, font
+from tkinter import scrolledtext
 import threading
+import sys
 
 from core.brain import Brain
 from core.memory import Memory
@@ -16,9 +16,9 @@ from core.voice import Voice
 class AsistenteGUI:
     def __init__(self):
         self.root = tk.Tk()
-        self.root.title("Asistente IA Local — Desde cero")
-        self.root.geometry("720x560")
-        self.root.minsize(500, 400)
+        self.root.title("Asistente por Comandos")
+        self.root.geometry("740x580")
+        self.root.minsize(520, 420)
         self.root.configure(bg="#0f172a")
 
         self.brain = Brain()
@@ -26,67 +26,69 @@ class AsistenteGUI:
         self.voice = Voice()
 
         self._build_ui()
-        self._mostrar_bienvenida()
+        self._mostrar_inicio()
 
     def _build_ui(self):
-        # Colores
         bg = "#0f172a"
         panel = "#1e293b"
         accent = "#38bdf8"
         text_color = "#e2e8f0"
-        user_bg = "#1e3a5f"
-        bot_bg = "#1e293b"
 
         # Título
         title_frame = tk.Frame(self.root, bg=bg)
-        title_frame.pack(fill=tk.X, padx=16, pady=(16, 8))
+        title_frame.pack(fill=tk.X, padx=16, pady=(16, 4))
 
-        title = tk.Label(
+        tk.Label(
             title_frame,
-            text="Asistente IA Local",
+            text="Asistente por Comandos",
             font=("Segoe UI", 18, "bold"),
             fg=accent,
             bg=bg
-        )
-        title.pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT)
 
-        subtitle = tk.Label(
+        tk.Label(
             title_frame,
-            text="100% desde cero · Sin modelos externos",
+            text="100% desde cero",
             font=("Segoe UI", 9),
             fg="#94a3b8",
             bg=bg
-        )
-        subtitle.pack(side=tk.LEFT, padx=(12, 0), pady=(6, 0))
+        ).pack(side=tk.LEFT, padx=(12, 0), pady=(8, 0))
 
-        # Área de chat
+        # Área de salida
         self.chat = scrolledtext.ScrolledText(
             self.root,
             wrap=tk.WORD,
-            font=("Segoe UI", 11),
+            font=("Consolas", 11),
             bg=panel,
             fg=text_color,
             insertbackground=text_color,
             relief=tk.FLAT,
-            padx=12,
+            padx=14,
             pady=12,
             state=tk.DISABLED
         )
         self.chat.pack(fill=tk.BOTH, expand=True, padx=16, pady=8)
 
-        # Tags de colores para mensajes
-        self.chat.tag_configure("user", foreground="#7dd3fc", font=("Segoe UI", 11, "bold"))
-        self.chat.tag_configure("bot", foreground="#86efac", font=("Segoe UI", 11, "bold"))
-        self.chat.tag_configure("msg", foreground=text_color)
-        self.chat.tag_configure("system", foreground="#94a3b8", font=("Segoe UI", 9, "italic"))
+        self.chat.tag_configure("cmd", foreground="#7dd3fc", font=("Consolas", 11, "bold"))
+        self.chat.tag_configure("out", foreground="#86efac")
+        self.chat.tag_configure("sys", foreground="#94a3b8", font=("Consolas", 10, "italic"))
+        self.chat.tag_configure("err", foreground="#f87171")
 
-        # Frame de entrada
+        # Entrada
         input_frame = tk.Frame(self.root, bg=bg)
         input_frame.pack(fill=tk.X, padx=16, pady=(0, 16))
 
+        tk.Label(
+            input_frame,
+            text=">",
+            font=("Consolas", 14, "bold"),
+            fg=accent,
+            bg=bg
+        ).pack(side=tk.LEFT, padx=(0, 8))
+
         self.entry = tk.Entry(
             input_frame,
-            font=("Segoe UI", 12),
+            font=("Consolas", 12),
             bg=panel,
             fg=text_color,
             insertbackground=text_color,
@@ -97,25 +99,22 @@ class AsistenteGUI:
         self.entry.bind("<Return>", self._on_send)
         self.entry.focus()
 
-        send_btn = tk.Button(
+        tk.Button(
             input_frame,
-            text="Enviar",
-            font=("Segoe UI", 11, "bold"),
+            text="Ejecutar",
+            font=("Segoe UI", 10, "bold"),
             bg=accent,
             fg="#0f172a",
             activebackground="#7dd3fc",
-            activeforeground="#0f172a",
             relief=tk.FLAT,
-            padx=18,
-            pady=6,
+            padx=14,
+            pady=5,
             cursor="hand2",
             command=self._on_send
-        )
-        send_btn.pack(side=tk.LEFT, padx=(10, 0))
+        ).pack(side=tk.LEFT, padx=(10, 0))
 
-        # Checkbox voz
         self.voz_var = tk.BooleanVar(value=True)
-        voz_check = tk.Checkbutton(
+        tk.Checkbutton(
             input_frame,
             text="Voz",
             variable=self.voz_var,
@@ -125,22 +124,15 @@ class AsistenteGUI:
             selectcolor=panel,
             activebackground=bg,
             activeforeground=text_color
-        )
-        voz_check.pack(side=tk.LEFT, padx=(12, 0))
+        ).pack(side=tk.LEFT, padx=(12, 0))
 
-    def _mostrar_bienvenida(self):
-        self._agregar_mensaje("system", "Asistente listo. Escribe algo para empezar.")
+    def _mostrar_inicio(self):
+        self._print("sys", "Escribe un comando. Ejemplo: ayuda")
+        self._print("sys", "────────────────────────────────────")
 
-    def _agregar_mensaje(self, rol: str, texto: str):
+    def _print(self, tag: str, texto: str):
         self.chat.configure(state=tk.NORMAL)
-        if rol == "user":
-            self.chat.insert(tk.END, "Tú: ", "user")
-            self.chat.insert(tk.END, texto + "\n\n", "msg")
-        elif rol == "bot":
-            self.chat.insert(tk.END, "Asistente: ", "bot")
-            self.chat.insert(tk.END, texto + "\n\n", "msg")
-        else:
-            self.chat.insert(tk.END, texto + "\n\n", "system")
+        self.chat.insert(tk.END, texto + "\n", tag)
         self.chat.configure(state=tk.DISABLED)
         self.chat.see(tk.END)
 
@@ -150,21 +142,25 @@ class AsistenteGUI:
             return
 
         self.entry.delete(0, tk.END)
-        self._agregar_mensaje("user", texto)
+        self._print("cmd", f"> {texto}")
 
-        # Procesar en hilo para no congelar la interfaz
-        threading.Thread(target=self._procesar, args=(texto,), daemon=True).start()
+        threading.Thread(target=self._ejecutar, args=(texto,), daemon=True).start()
 
-    def _procesar(self, texto: str):
+    def _ejecutar(self, texto: str):
         self.memory.add("user", texto)
         respuesta = self.brain.think(texto, self.memory.get_context())
         self.memory.add("assistant", respuesta)
 
-        # Actualizar UI en el hilo principal
-        self.root.after(0, lambda: self._agregar_mensaje("bot", respuesta))
+        self.root.after(0, lambda: self._print("out", respuesta))
+        self.root.after(0, lambda: self._print("sys", ""))
 
         if self.voz_var.get():
-            self.voice.speak(respuesta)
+            # Hablar solo la primera línea para no ser muy largo
+            primera = respuesta.split("\n")[0]
+            self.voice.speak(primera)
+
+        if self.brain.should_exit:
+            self.root.after(800, self.root.destroy)
 
     def run(self):
         self.root.mainloop()
