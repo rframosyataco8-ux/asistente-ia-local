@@ -1,74 +1,97 @@
-# Asistente IA Local — 100% Offline
+# Asistente IA Local — 100% Desde Cero
 
-**Sin APIs externas. Sin costos. Todo corre en tu PC.**
+**Sin Ollama. Sin modelos pre-entrenados. Sin APIs. Solo código propio.**
 
-Este proyecto construye un asistente de inteligencia artificial que funciona completamente en local:
+Este es un asistente construido completamente desde cero:
 
-- Escucha tu voz (STT local)
-- Razona con un modelo local (Ollama / Llama / Phi / Qwen)
-- Responde con voz natural (TTS local)
-- Tiene memoria de conversación
-- Puede controlar tu PC y archivos
-
-> **Importante**: No es un modelo de lenguaje entrenado desde cero (eso requiere millones de dólares y miles de GPUs).  
-> Es un **sistema completo de IA local** construido desde cero, usando solo software open-source que corre en tu máquina sin enviar datos a internet.
+- Cerebro propio basado en reglas, intenciones y base de conocimiento
+- Voz local (pyttsx3 — motor del sistema)
+- Memoria de conversación
+- Interfaz gráfica (Tkinter)
+- Todo corre en tu PC sin internet
 
 ---
 
-## Arquitectura
-
-```
-Micrófono → STT Local (Vosk) → Cerebro (Ollama) → TTS Local (Piper) → Altavoces
-                              ↓
-                         Memoria local
-```
-
-## Requisitos
-
-- Windows / Linux / macOS
-- Python 3.10+
-- [Ollama](https://ollama.com) instalado
-- Micrófono y altavoces
-
-## Instalación rápida
+## Cómo ejecutarlo
 
 ```bash
 git clone https://github.com/rframosyataco8-ux/asistente-ia-local.git
 cd asistente-ia-local
 
 python -m venv venv
-# Windows:
-venv\Scripts\activate
-# Linux/Mac:
-source venv/bin/activate
+venv\Scripts\activate          # Windows
+# source venv/bin/activate     # Linux/Mac
 
 pip install -r requirements.txt
 
-# Descargar modelo de IA local (elige uno)
-ollama pull llama3.2          # recomendado
-# ollama pull qwen2.5:3b      # excelente en español
-# ollama pull phi3            # más ligero
+# Opción 1: Interfaz gráfica (recomendado)
+python gui.py
 
+# Opción 2: Solo consola
 python main.py
 ```
 
-## Estado del proyecto
+---
 
-| Módulo              | Estado         | Notas                          |
-|---------------------|----------------|--------------------------------|
-| Cerebro (Ollama)    | Listo          | Conversación local             |
-| Voz (TTS)           | En progreso    | Piper (local) + fallback       |
-| Escucha (STT)       | En progreso    | Vosk offline                   |
-| Memoria             | En progreso    | Historial de conversación      |
-| Control de PC       | Pendiente      | Abrir apps, archivos, etc.     |
-| Interfaz            | Pendiente      | Consola primero, luego GUI     |
+## Estructura del proyecto
 
-## Filosofía
+```
+asistente-ia-local/
+├── gui.py              ← Interfaz gráfica
+├── main.py             ← Versión de consola
+├── requirements.txt
+├── core/
+│   ├── brain.py        ← Cerebro propio (reglas + intenciones)
+│   ├── memory.py       ← Memoria de conversación
+│   ├── voice.py        ← Voz local
+│   └── stt.py          ← Escucha (en desarrollo)
+└── README.md
+```
 
-- Cero APIs de pago
-- Todo el código es tuyo
-- Puedes afinar el modelo localmente más adelante
-- Se mejora continuamente en este repositorio
+---
+
+## Qué puede hacer ahora
+
+- Saludar y despedirse
+- Decir la hora y la fecha
+- Responder quién es
+- Responder cómo está
+- Mostrar ayuda básica
+- Recordar el historial de la conversación actual
+- Hablar con voz del sistema
+
+---
+
+## Cómo hacerlo más inteligente
+
+Todo está en `core/brain.py`.
+
+Puedes:
+1. Agregar más intenciones (palabras clave)
+2. Agregar más respuestas en la base de conocimiento
+3. Agregar lógica más compleja (cálculos, control de archivos, etc.)
+4. Guardar conocimiento en un archivo JSON para que aprenda de forma persistente
+
+Ejemplo de cómo agregar conocimiento:
+
+```python
+brain.add_intent("clima", ["clima", "tiempo", "hace calor", "llueve"])
+brain.add_knowledge("clima", ["No tengo acceso al clima todavía, pero puedo agregarlo."])
+```
+
+---
+
+## Estado actual
+
+| Módulo           | Estado   |
+|------------------|----------|
+| Cerebro propio   | Listo    |
+| Memoria          | Listo    |
+| Voz local        | Listo    |
+| Interfaz gráfica | Listo    |
+| Escucha (STT)    | Pendiente |
+| Control de PC    | Pendiente |
+| Aprendizaje      | Pendiente |
 
 ---
 
